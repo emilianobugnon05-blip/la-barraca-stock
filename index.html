@@ -88,6 +88,19 @@
 
       mensaje.textContent = "Ingresando...";
 
+     try {
+  const respuesta = await fetch(
+    supabaseUrl + "/auth/v1/health",
+    { headers: { apikey: supabaseKey } }
+  );
+
+  mensaje.textContent =
+    "Conexión Supabase: " + respuesta.status;
+} catch (e) {
+  mensaje.textContent =
+    "Error de conexión: " + e.message;
+  return;
+     }
       const { data, error } = await db.auth.signInWithPassword({
         email: correo,
         password: clave
