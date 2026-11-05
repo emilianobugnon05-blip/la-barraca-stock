@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LA BARRACA STOCK</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f2f5f9;
+      color: #172033;
+    }
+    .contenedor {
+      max-width: 420px;
+      margin: 60px auto;
+      padding: 24px;
+    }
+    .tarjeta {
+      background: white;
+      padding: 28px;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px #00000012;
+    }
+    h1 { text-align: center; color: #2563eb; }
+    p { text-align: center; color: #64748b; }
+    label { display: block; margin-top: 18px; }
+    input, button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 8px;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    input { border: 1px solid #cbd5e1; }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      margin-top: 24px;
+      cursor: pointer;
+    }
+    #mensaje { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <main class="contenedor">
+    <div class="tarjeta">
+      <h1>LA BARRACA STOCK</h1>
+      <p>Sistema de gestión comercial</p>
+
+      <form id="login">
+        <label for="correo">Correo electrónico</label>
+        <input id="correo" type="email" required
+               autocomplete="username">
+
+        <label for="clave">Contraseña</label>
+        <input id="clave" type="password" required
+               autocomplete="current-password">
+
+        <button type="submit">Ingresar</button>
+      </form>
+
+      <p id="mensaje" role="status"></p>
+    </div>
+  </main>
+
+  <script>
+    document.getElementById("login")
+      .addEventListener("submit", function(event) {
+        event.preventDefault();
+        document.getElementById("mensaje").textContent =
+          "Pantalla preparada. Falta conectar Supabase.";
+      });
+  </script>
+</body>
+</html>
