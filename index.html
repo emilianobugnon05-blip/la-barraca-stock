@@ -67,13 +67,55 @@
     </div>
   </main>
 
-  <script>
-    document.getElementById("login")
-      .addEventListener("submit", function(event) {
-        event.preventDefault();
-        document.getElementById("mensaje").textContent =
-          "Pantalla preparada. Falta conectar Supabase.";
+  
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const supabaseUrl = "https://iyrqarpqtyckzozhnswx.supabase.co";
+  const supabaseKey = "sb_publishable_HGEpi6b5IGWMo9zsNkBXLA_zn6HtSN3";
+
+  const db = window.supabase.createClient(
+    supabaseUrl,
+    supabaseKey
+  );
+
+  document.getElementById("login")
+    .addEventListener("submit", async function(event) {
+      event.preventDefault();
+
+      const correo = document.getElementById("correo").value;
+      const clave = document.getElementById("clave").value;
+      const mensaje = document.getElementById("mensaje");
+
+      mensaje.textContent = "Ingresando...";
+
+      const { data, error } = await db.auth.signInWithPassword({
+        email: correo,
+        password: clave
       });
-  </script>
+
+      if (error) {
+        mensaje.textContent = "Error: " + error.message;
+        return;
+      }
+
+      const { data: perfil, error: errorPerfil } = await db
+        .from("perfiles")
+        .select("nivel")
+        .eq("usuario_id", data.user.id)
+        .single();
+
+      if (errorPerfil || !perfil) {
+        mensaje.textContent = "No se pudo verificar tu nivel de acceso.";
+        await db.auth.signOut();
+        return;
+      }
+
+      mensaje.textContent =
+        "¡Bienvenido a La Barraca Stock! Nivel de acceso: " +
+        perfil.nivel;
+    });
+</script>
+
 </body>
 </html>
+
