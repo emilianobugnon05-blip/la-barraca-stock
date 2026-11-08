@@ -86,30 +86,17 @@
       const clave = document.getElementById("clave").value;
       const mensaje = document.getElementById("mensaje");
 
-      mensaje.textContent = "Ingresando...";
+      mensaje.textContent = "ingresando...";
 
-     try {
-  const respuesta = await fetch(
-    supabaseUrl + "/auth/v1/health",
-    { headers: { apikey: supabaseKey } }
-  );
+const { data, error } = await db.auth.signInWithPassword({
+  email: correo,
+  password: clave
+});
 
-  mensaje.textContent =
-    "Conexión Supabase: " + respuesta.status;
-} catch (e) {
-  mensaje.textContent =
-    "Error de conexión: " + e.message;
+if (error) {
+  mensaje.textContent = "Error: " + error.message;
   return;
-     }
-      const { data, error } = await db.auth.signInWithPassword({
-        email: correo,
-        password: clave
-      });
-
-      if (error) {
-        mensaje.textContent = "Error: " + error.message;
-        return;
-      }
+}
 
       const { data: perfil, error: errorPerfil } = await db
         .from("perfiles")
