@@ -257,7 +257,23 @@ function mostrarPantallaVentas() {
     </button>
 
     <div id="resultadoVenta"></div>
+      
+<h3>Carrito de compras</h3>
+<div id="listaCarrito"></div>
+<h2 id="totalVenta">Total: $0</h2>
   `;
+
+
+}
+
+let carritoVentas = [];
+
+function calcularTotalVenta() {
+  return carritoVentas.reduce(
+    (total, producto) =>
+      total + producto.precio * producto.cantidad,
+    0
+  );
 }
 
 
