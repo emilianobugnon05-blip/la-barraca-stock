@@ -76,11 +76,21 @@
   <div id="resultadoBusqueda"></div>
 </section>
 
+<section style="margin-top:25px">
+  <h2>Escanear código de barras</h2>
+  <button type="button" onclick="iniciarCamara()">
+    Abrir cámara
+  </button>
+  <div id="lector" style="width:100%;margin-top:15px"></div>
+</section>
+
   </main>
 
   
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <script>
   const supabaseUrl = "https://iyrqarpotyckzozhnswx.supabase.co";
   const supabaseKey = "sb_publishable_HGEpi6b5IGWMo9zsNkBXLA_zn6HtSN3";
 
@@ -212,6 +222,43 @@ async function buscarProducto() {
       `${p.nombre} | Código: ${p.codigo_barras} | Precio: $${p.precio_venta} | Stock: ${p.stock} | Ubicación: ${p.ubicacion || "-"}`;
     resultado.appendChild(item);
   });
+}
+
+let lectorCamara = null;
+let camaraActiva = false;
+
+async function iniciarCamara() {
+  if (camaraActiva) return;
+
+  if (typeof Html5Qrcode === "undefined") {
+    alert("No se pudo cargar el lector de códigos.");
+    return;
+  }
+
+  lectorCamara = new Html5Qrcode("lector");
+
+  try {
+    camaraActiva = true;
+
+    await lectorCamara.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 150 }
+      },
+      async (codigo) => {
+        await lectorCamara.stop();
+        camaraActiva = false;
+
+        document.getElementById("busqueda").value = codigo;
+        await buscarProducto();
+      },
+      () => {}
+    );
+  } catch (error) {
+    camaraActiva = false;
+    alert("No se pudo abrir la cámara: " + error.message);
+  }
 }
 
 </script>
