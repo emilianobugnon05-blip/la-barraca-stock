@@ -135,7 +135,7 @@ mensaje.innerHTML = `
 `;
     });
   
-async function guardarProducto() {
+window.guardarProducto = async function() {
   const codigo_barras = document.getElementById("codigoProducto").value.trim();
   const nombre = document.getElementById("nombreProducto").value.trim();
   const precio_venta = Number(document.getElementById("precioProducto").value);
