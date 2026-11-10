@@ -65,6 +65,17 @@
 
       <p id="mensaje" role="status"></p>
     </div>
+    
+<section id="seccionBusqueda" style="margin-top:25px">
+  <h2>Consultar productos</h2>
+  <input id="busqueda"
+         placeholder="Nombre o código de barras">
+  <button type="button" onclick="buscarProducto()">
+    Buscar producto
+  </button>
+  <div id="resultadoBusqueda"></div>
+</section>
+
   </main>
 
   
@@ -164,6 +175,43 @@ window.guardarProducto = async function() {
   } else {
     resultado.textContent = "¡Producto guardado correctamente!";
   }
+}
+
+async function buscarProducto() {
+  const busqueda = document.getElementById("busqueda").value.trim();
+  const resultado = document.getElementById("resultadoBusqueda");
+
+  if (!busqueda) {
+    resultado.textContent = "Ingresá un nombre o código.";
+    return;
+  }
+
+  resultado.textContent = "Buscando...";
+
+  const { data, error } = await db
+    .from("productos")
+    .select("nombre,codigo_barras,precio_venta,stock,ubicacion")
+    .or(`nombre.ilike.%${busqueda.replace(/[%_,().]/g, "")}%,codigo_barras.ilike.%${busqueda.replace(/[%_,().]/g, "")}%`)
+    .limit(20);
+
+  if (error) {
+    resultado.textContent = "Error: " + error.message;
+    return;
+  }
+
+  resultado.replaceChildren();
+
+  if (!data.length) {
+    resultado.textContent = "No se encontraron productos.";
+    return;
+  }
+
+  data.forEach(p => {
+    const item = document.createElement("p");
+    item.textContent =
+      `${p.nombre} | Código: ${p.codigo_barras} | Precio: $${p.precio_venta} | Stock: ${p.stock} | Ubicación: ${p.ubicacion || "-"}`;
+    resultado.appendChild(item);
+  });
 }
 
 </script>
