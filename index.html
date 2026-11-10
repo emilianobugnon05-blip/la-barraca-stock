@@ -119,7 +119,19 @@ mensaje.innerHTML = `
   <p>Bienvenido al sistema de La Barraca</p>
   <p>Tu nivel de acceso: ${perfil.nivel}</p>
   <h3>Próximamente</h3>
-  <p>Productos | Precios | Stock | Ventas</p>
+  <h3>Cargar producto</h3>
+
+<input id="codigoProducto" placeholder="Código de barras">
+<input id="nombreProducto" placeholder="Nombre del producto">
+<input id="precioProducto" type="number" placeholder="Precio de venta">
+<input id="stockProducto" type="number" placeholder="Cantidad disponible">
+<input id="ubicacionProducto" placeholder="Ubicación (opcional)">
+
+<button type="button" onclick="guardarProducto()">
+  Guardar producto
+</button>
+
+<p id="resultadoProducto"></p>
 `;
     });
 </script>
