@@ -254,7 +254,7 @@ async function iniciarCamara() {
       async (codigo) => {
         await lectorCamara.stop();
         camaraActiva = false;
-
+document.getElementById("codigoProducto").value = codigo;
         document.getElementById("busqueda").value = codigo;
         await buscarProducto();
       },
