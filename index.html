@@ -303,11 +303,92 @@ async function buscarParaVenta() {
     return;
   }
 
-  resultado.textContent =
-    data.nombre + " | Precio: $" + data.precio_venta +
-    " | Stock: " + data.stock;
+ 
+resultado.replaceChildren();
+
+const informacion = document.createElement("p");
+informacion.textContent =
+  data.nombre + " | Precio: $" + data.precio_venta +
+  " | Stock: " + data.stock;
+
+const botonAgregar = document.createElement("button");
+botonAgregar.type = "button";
+botonAgregar.textContent = "Agregar al carrito";
+
+botonAgregar.onclick = function() {
+  cargarProductoAlCarrito(data);
+};
+
+resultado.appendChild(informacion);
+resultado.appendChild(botonAgregar);
+ 
 }
 
+function agregarAlCarrito(producto, cantidad) {
+  cantidad = Number(cantidad);
+
+  if (!Number.isInteger(cantidad) || cantidad <= 0) {
+    alert("Ingresá una cantidad válida.");
+    return;
+  }
+
+  const existente = carritoVentas.find(
+    p => p.id === producto.id
+  );
+
+  const cantidadTotal = cantidad +
+    (existente ? existente.cantidad : 0);
+
+  if (cantidadTotal > producto.stock) {
+    alert("No hay suficiente stock disponible.");
+    return;
+  }
+
+  if (existente) {
+    existente.cantidad = cantidadTotal;
+  } else {
+    carritoVentas.push({
+      id: producto.id,
+      nombre: producto.nombre,
+      precio: Number(producto.precio_venta),
+      cantidad: cantidad,
+      stock: producto.stock
+    });
+  }
+
+  mostrarCarrito();
+}
+
+function mostrarCarrito() {
+  const lista = document.getElementById("listaCarrito");
+  const total = document.getElementById("totalVenta");
+
+  if (!lista || !total) return;
+
+  lista.replaceChildren();
+
+  carritoVentas.forEach(producto => {
+    const item = document.createElement("p");
+
+    item.textContent =
+      producto.nombre + " | Cantidad: " +
+      producto.cantidad + " | Subtotal: $" +
+      (producto.precio * producto.cantidad);
+
+    lista.appendChild(item);
+  });
+
+  total.textContent = "Total: $" + calcularTotalVenta();
+}
+
+
+function cargarProductoAlCarrito(producto) {
+  const cantidad = Number(
+    document.getElementById("cantidadVenta").value
+  );
+
+  agregarAlCarrito(producto, cantidad);
+}
 
 let lectorCamara = null;
 let camaraActiva = false;
