@@ -134,6 +134,38 @@ mensaje.innerHTML = `
 <p id="resultadoProducto"></p>
 `;
     });
+  
+async function guardarProducto() {
+  const codigo_barras = document.getElementById("codigoProducto").value.trim();
+  const nombre = document.getElementById("nombreProducto").value.trim();
+  const precio_venta = Number(document.getElementById("precioProducto").value);
+  const stock = Number(document.getElementById("stockProducto").value);
+  const ubicacion = document.getElementById("ubicacionProducto").value.trim();
+  const resultado = document.getElementById("resultadoProducto");
+
+  if (!codigo_barras || !nombre || !precio_venta ||
+      !Number.isInteger(stock) || stock < 0) {
+    resultado.textContent = "Completá correctamente los datos.";
+    return;
+  }
+
+  resultado.textContent = "Guardando producto...";
+
+  const { error } = await db.from("productos").insert({
+    codigo_barras,
+    nombre,
+    precio_venta,
+    stock,
+    ubicacion
+  });
+
+  if (error) {
+    resultado.textContent = "Error: " + error.message;
+  } else {
+    resultado.textContent = "¡Producto guardado correctamente!";
+  }
+}
+
 </script>
 
 </body>
