@@ -113,6 +113,14 @@ if (error) {
       mensaje.textContent =
         "¡Bienvenido a La Barraca Stock! Nivel de acceso: " +
         perfil.nivel;
+      document.getElementById("login").style.display = "none";
+mensaje.innerHTML = `
+  <h2>Panel principal</h2>
+  <p>Bienvenido al sistema de La Barraca</p>
+  <p>Tu nivel de acceso: ${perfil.nivel}</p>
+  <h3>Próximamente</h3>
+  <p>Productos | Precios | Stock | Ventas</p>
+`;
     });
 </script>
 
