@@ -397,6 +397,49 @@ function cargarProductoAlCarrito(producto) {
   agregarAlCarrito(producto, cantidad);
 }
 
+async function finalizarVenta() {
+  if (carritoVentas.length === 0) {
+    alert("El carrito está vacío.");
+    return;
+  }
+
+  const boton = document.getElementById("botonFinalizarVenta");
+  const mensaje = document.getElementById("mensajeVenta");
+
+  if (boton) boton.disabled = true;
+  if (mensaje) mensaje.textContent = "Registrando venta...";
+
+  try {
+    const { data, error } = await db.rpc(
+      "registrar_venta",
+      {
+        p_productos: carritoVentas.map(p => ({
+          producto_id: p.id,
+          cantidad: p.cantidad
+        }))
+      }
+    );
+
+    if (error) throw error;
+
+    carritoVentas = [];
+    mostrarCarrito();
+
+    if (mensaje) {
+      mensaje.textContent = "¡Venta registrada correctamente!";
+    }
+
+    alert("Venta registrada. Stock actualizado.");
+
+  } catch (error) {
+    if (mensaje) {
+      mensaje.textContent = "Error: " + error.message;
+    }
+  } finally {
+    if (boton) boton.disabled = false;
+  }
+}
+
 let lectorCamara = null;
 let camaraActiva = false;
 
