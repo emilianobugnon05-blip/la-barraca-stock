@@ -139,7 +139,13 @@ mensaje.innerHTML = `
   <h2>Panel principal</h2>
   <p>Bienvenido al sistema de La Barraca</p>
   <p>Tu nivel de acceso: ${perfil.nivel}</p>
-  <h3>Próximamente</h3>
+  
+<h3>Sector de ventas</h3>
+<button type="button" onclick="mostrarPantallaVentas()">
+  Abrir pantalla de ventas
+</button>
+<div id="pantallaVentas"></div>
+
   <h3>Cargar producto</h3>
 
 <input id="codigoProducto" placeholder="Código de barras">
@@ -228,6 +234,32 @@ async function buscarProducto() {
     resultado.appendChild(item);
   });
 }
+    
+function mostrarPantallaVentas() {
+  const pantalla = document.getElementById("pantallaVentas");
+
+  if (!pantalla) return;
+
+  pantalla.innerHTML = `
+    <h2>Ventas - La Barraca</h2>
+    <input id="codigoVenta"
+      placeholder="Escanear código de barras">
+
+    <input id="cantidadVenta"
+      type="number"
+      min="1"
+      value="1"
+      placeholder="Cantidad">
+
+    <button type="button"
+      onclick="buscarParaVenta()">
+      Buscar producto
+    </button>
+
+    <div id="resultadoVenta"></div>
+  `;
+}
+
 
 let lectorCamara = null;
 let camaraActiva = false;
