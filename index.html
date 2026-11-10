@@ -276,6 +276,38 @@ function calcularTotalVenta() {
   );
 }
 
+async function buscarParaVenta() {
+  const codigo = document.getElementById("codigoVenta").value.trim();
+  const resultado = document.getElementById("resultadoVenta");
+
+  if (!codigo) {
+    resultado.textContent = "Ingresá un código de barras.";
+    return;
+  }
+
+  resultado.textContent = "Buscando producto...";
+
+  const { data, error } = await db
+    .from("productos")
+    .select("id,nombre,codigo_barras,precio_venta,stock")
+    .eq("codigo_barras", codigo)
+    .maybeSingle();
+
+  if (error) {
+    resultado.textContent = "Error: " + error.message;
+    return;
+  }
+
+  if (!data) {
+    resultado.textContent = "Producto no encontrado.";
+    return;
+  }
+
+  resultado.textContent =
+    data.nombre + " | Precio: $" + data.precio_venta +
+    " | Stock: " + data.stock;
+}
+
 
 let lectorCamara = null;
 let camaraActiva = false;
