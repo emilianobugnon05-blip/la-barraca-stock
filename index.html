@@ -143,6 +143,11 @@ mensaje.innerHTML = `
   <h3>Cargar producto</h3>
 
 <input id="codigoProducto" placeholder="Código de barras">
+
+<button type="button" onclick="escanearParaCargar()">
+  📷 Escanear para cargar
+</button>
+
 <input id="nombreProducto" placeholder="Nombre del producto">
 <input id="precioProducto" type="number" placeholder="Precio de venta">
 <input id="stockProducto" type="number" placeholder="Cantidad disponible">
@@ -259,6 +264,21 @@ async function iniciarCamara() {
     camaraActiva = false;
     alert("No se pudo abrir la cámara: " + error.message);
   }
+}
+
+function escanearParaCargar() {
+  const codigo = document.getElementById("busqueda").value.trim();
+
+  if (codigo) {
+    document.getElementById("codigoProducto").value = codigo;
+  }
+
+  document.getElementById("lector").scrollIntoView({
+    behavior: "smooth"
+  });
+
+  alert("Escaneá el producto con la cámara y después tocá nuevamente 'Escanear para cargar' para copiar el código.");
+  iniciarCamara();
 }
 
 </script>
