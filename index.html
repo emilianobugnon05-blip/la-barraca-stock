@@ -283,67 +283,7 @@ function escanearParaCargar() {
   iniciarCamara();
 }
 
-async function verInformeVentas() {
-  const informe = document.getElementById("informeVentas");
-  informe.textContent = "Cargando ventas...";
 
-  const { data: { user } } = await db.auth.getUser();
-
-  if (!user) {
-    informe.textContent = "Iniciá sesión.";
-    return;
-  }
-
-  const { data: perfil } = await db
-    .from("perfiles")
-    .select("nivel")
-    .eq("usuario_id", user.id)
-    .single();
-
-  if (perfil?.nivel !== 1) {
-    informe.textContent = "Acceso no autorizado.";
-    return;
-  }
-
-  const { data, error } = await db
-    .from("ventas")
-    .select("fecha,total")
-    .order("fecha", { ascending: false });
-
-  if (error) {
-    informe.textContent = "Error: " + error.message;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    informe.textContent = "Todavía no hay ventas.";
-    return;
-  }
-
-  const resumen = {};
-
-  data.forEach(venta => {
-    const fecha = new Date(venta.fecha)
-      .toLocaleDateString("es-AR");
-
-    if (!resumen[fecha]) {
-      resumen[fecha] = { cantidad: 0, total: 0 };
-    }
-
-    resumen[fecha].cantidad++;
-    resumen[fecha].total += Number(venta.total);
-  });
-
-  informe.replaceChildren();
-
-  Object.entries(resumen).forEach(([fecha, datos]) => {
-    const linea = document.createElement("p");
-    linea.textContent =
-      fecha + " | Ventas: " + datos.cantidad +
-      " | Total: $" + datos.total.toLocaleString("es-AR");
-    informe.appendChild(linea);
-  });
-}
 </script>
 </body>
 </html>
