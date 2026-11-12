@@ -150,7 +150,9 @@ mensaje.innerHTML = `
   <p>Tu nivel de acceso: ${perfil.nivel}</p>  
   <h3>Cargar producto</h3>
 
-<input id="codigoProducto" placeholder="Código de barras">
+<input id="codigoProducto" placeholder="Código de barras" oninput="reiniciarDeteccion()">
+<button type="button" onclick="verificarCodigoProducto()">Verificar código</button>
+<div id="estadoCodigo" role="status" style="margin-top:10px;color:#facc15"></div>
 
 <button type="button" onclick="escanearParaCargar()">
   📷 Escanear para cargar
@@ -158,7 +160,14 @@ mensaje.innerHTML = `
 
 <input id="nombreProducto" placeholder="Nombre del producto">
 <input id="precioProducto" type="number" placeholder="Precio de venta">
-<input id="stockProducto" type="number" placeholder="Cantidad disponible">
+<input id="stockProducto" type="number" min="0" step="1" placeholder="Cantidad inicial (producto nuevo)">
+<div id="sectorIngreso" style="display:none;border:1px solid #52525b;border-radius:12px;padding:12px;margin-top:14px">
+  <strong>Ingreso de mercadería existente</strong>
+  <p id="detalleExistente" style="text-align:left;color:white"></p>
+  <label for="cantidadIngreso">Unidades que llegaron</label>
+  <input id="cantidadIngreso" type="number" min="1" step="1" placeholder="Ejemplo: 20">
+  <button type="button" onclick="sumarMercaderia()">Sumar unidades al stock</button>
+</div>
 <input id="ubicacionProducto" placeholder="Ubicación (opcional)">
 <label for="fotoProducto">Foto del producto (opcional)</label>
 <input id="fotoProducto" type="file" accept="image/*" style="font-size:14px">
@@ -172,7 +181,88 @@ mensaje.innerHTML = `
 `;
     });
   
+let productoDetectado = null;
+let guardandoProducto = false;
+
+function reiniciarDeteccion() {
+  productoDetectado = null;
+  const estado = document.getElementById("estadoCodigo");
+  if (estado) estado.textContent = "Verificá el código antes de guardar.";
+  const sector = document.getElementById("sectorIngreso");
+  if (sector) sector.style.display = "none";
+}
+
+async function verificarCodigoProducto() {
+  const codigo = document.getElementById("codigoProducto").value.trim();
+  const estado = document.getElementById("estadoCodigo");
+  const sector = document.getElementById("sectorIngreso");
+  productoDetectado = null;
+  sector.style.display = "none";
+  if (!codigo) { estado.textContent = "Primero ingresá o escaneá el código."; return; }
+  estado.textContent = "Verificando...";
+  const {data, error} = await db.from("productos")
+    .select("codigo_barras,nombre,precio_venta,stock")
+    .eq("codigo_barras", codigo).limit(3);
+  if (error) { estado.textContent = "No se pudo verificar: " + error.message; return; }
+  if (data.length > 1) {
+    estado.textContent = "Atención: este código está duplicado. No se puede sumar stock hasta corregirlo.";
+    return;
+  }
+  if (data.length === 0) {
+    estado.textContent = "Código nuevo. Completá los datos y tocá Guardar producto.";
+    return;
+  }
+  productoDetectado = data[0];
+  estado.textContent = "Producto existente. No lo cargues de nuevo: sumá las unidades abajo.";
+  document.getElementById("detalleExistente").textContent =
+    `${data[0].nombre} | Stock actual: ${data[0].stock} | Precio: $${data[0].precio_venta}`;
+  sector.style.display = "block";
+}
+
+async function sumarMercaderia() {
+  if (guardandoProducto) return;
+  const resultado = document.getElementById("resultadoProducto");
+  const cantidad = Number(document.getElementById("cantidadIngreso").value);
+  if (!productoDetectado || !Number.isSafeInteger(cantidad) || cantidad <= 0) {
+    resultado.textContent = "Verificá el producto e ingresá una cantidad entera mayor que cero.";
+    return;
+  }
+  guardandoProducto = true;
+  resultado.textContent = "Actualizando existencias...";
+  try {
+    const codigo = productoDetectado.codigo_barras;
+    // Control optimista: si otro celular cambió el stock, reintentamos con el valor reciente.
+    for (let intento = 0; intento < 4; intento++) {
+      const {data: filas, error: errorLectura} = await db.from("productos")
+        .select("codigo_barras,nombre,stock").eq("codigo_barras", codigo).limit(3);
+      if (errorLectura) throw errorLectura;
+      if (filas.length !== 1) throw new Error("Código inexistente o duplicado. Revisalo antes de continuar.");
+      const actual = Number(filas[0].stock);
+      if (!Number.isSafeInteger(actual)) throw new Error("El stock actual no es un número entero válido.");
+      const nuevo = actual + cantidad;
+      if (!Number.isSafeInteger(nuevo)) throw new Error("La cantidad resultante es demasiado grande.");
+      const {data: actualizado, error: errorCambio} = await db.from("productos")
+        .update({stock:nuevo}).eq("codigo_barras",codigo).eq("stock",actual)
+        .select("codigo_barras,stock");
+      if (errorCambio) throw errorCambio;
+      if (actualizado && actualizado.length === 1) {
+        resultado.textContent = `Ingreso registrado: +${cantidad} unidades. Stock nuevo: ${nuevo}.`;
+        document.getElementById("cantidadIngreso").value = "";
+        productoDetectado.stock = nuevo;
+        document.getElementById("detalleExistente").textContent =
+          `${filas[0].nombre} | Stock actual: ${nuevo}`;
+        return;
+      }
+      if (actualizado && actualizado.length > 1) throw new Error("Hay productos duplicados. Revisá el código.");
+    }
+    throw new Error("El stock cambió al mismo tiempo. Volvé a intentar.");
+  } catch (error) {
+    resultado.textContent = "No se pudo actualizar: " + error.message;
+  } finally { guardandoProducto = false; }
+}
+
 window.guardarProducto = async function() {
+  if (guardandoProducto) return;
   const codigo_barras = document.getElementById("codigoProducto").value.trim();
   const nombre = document.getElementById("nombreProducto").value.trim();
   const precio_venta = Number(document.getElementById("precioProducto").value);
@@ -187,24 +277,44 @@ window.guardarProducto = async function() {
     return;
   }
 
+  guardandoProducto = true;
+  resultado.textContent = "Verificando código...";
+  const {data: existentes, error: errorVerificacion} = await db.from("productos")
+    .select("codigo_barras").eq("codigo_barras", codigo_barras).limit(1);
+  if (errorVerificacion) {
+    resultado.textContent = "No se pudo verificar el código: " + errorVerificacion.message;
+    guardandoProducto = false;
+    return;
+  }
+  if (existentes.length) {
+    resultado.textContent = "Este código ya existe. Tocá Verificar código y sumá la mercadería.";
+    guardandoProducto = false;
+    await verificarCodigoProducto();
+    return;
+  }
   resultado.textContent = "Guardando producto...";
 
   let foto_path = null;
   if (foto) {
     if (!foto.type.startsWith("image/")) {
       resultado.textContent = "Elegí un archivo de imagen.";
+      guardandoProducto = false;
       return;
     }
     try {
-      const imagenReducida = await prepararFoto(foto);
-      const ruta = `${crypto.randomUUID()}.jpg`;
+      // Subir el archivo original evita fallos de FileReader en Android.
+      // La vista previa ya confirma que el teléfono puede acceder a la imagen.
+      if (foto.size > 6 * 1024 * 1024) throw new Error("La foto supera 6 MB. Elegí una imagen más liviana.");
+      const extension = foto.type === "image/png" ? "png" : foto.type === "image/webp" ? "webp" : "jpg";
+      const ruta = `${crypto.randomUUID()}.${extension}`;
       const { error: errorFoto } = await db.storage
         .from("productos-fotos.")
-        .upload(ruta, imagenReducida, { contentType: "image/jpeg", upsert: false });
+        .upload(ruta, foto, { contentType: foto.type || "image/jpeg", upsert: false });
       if (errorFoto) throw errorFoto;
       foto_path = ruta;
     } catch (errorFoto) {
       resultado.textContent = "No se pudo subir la foto: " + errorFoto.message;
+      guardandoProducto = false;
       return;
     }
   }
@@ -225,7 +335,9 @@ window.guardarProducto = async function() {
     resultado.textContent = "¡Producto guardado correctamente!";
     document.getElementById("fotoProducto").value = "";
     document.getElementById("vistaFotoProducto").style.display = "none";
+    reiniciarDeteccion();
   }
+  guardandoProducto = false;
 }
 
 async function prepararFoto(archivo) {
@@ -382,4 +494,5 @@ function escanearParaCargar() {
 
 </script>
 </body>
-  </html>
+</html>
+
