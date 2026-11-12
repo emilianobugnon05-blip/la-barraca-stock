@@ -1,0 +1,369 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LA BARRACA STOCK</title>
+  <link rel="icon" type="image/png" href="file_00000000f834820eb24650b3d435873c.png">
+  <link rel="apple-touch-icon" href="file_00000000f834820eb24650b3d435873c.png">
+<meta name="theme-color" content="#0b0b0e">
+<link rel="manifest" href="manifest.json">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0b0b0e;
+      color: #ffffff;
+    }
+    .contenedor {
+      max-width: 420px;
+      margin: 60px auto;
+      padding: 24px;
+    }
+    .tarjeta {
+      background: #1b1b20;
+      padding: 28px;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px #00000012;
+    }
+    h1 { text-align: center;color: #ffffff; font-family: 'Montserrat', Arial, sans-serif;
+font-weight: 900;
+letter-spacing: 1px; }
+    p { text-align: center; color: #64748b; }
+    label { display: block; margin-top: 18px; }
+    input, button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 8px;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    input {
+  background: #101014;
+  color: white;
+  border: 1px solid #52525b;
+    }
+    button {
+      background: #dc2626;
+      color: white;
+      border: none;
+      margin-top: 24px;
+      cursor: pointer;
+    }
+    #mensaje { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <main class="contenedor">
+    <div class="tarjeta">
+      <h1>LA BARRACA <span style="color: #dc2626;">STOCK</span></h1>
+
+      <form id="login">
+        <label for="correo">Correo electrónico</label>
+        <input id="correo" type="email" required
+               autocomplete="username">
+
+        <label for="clave">Contraseña</label>
+        <input id="clave" type="password" required
+               autocomplete="current-password">
+
+        <button type="submit">Ingresar</button>
+      </form>
+
+      <p id="mensaje" role="status"></p>
+    </div>
+    
+<section id="seccionBusqueda" style="margin-top:25px">
+  <h2>Consultar productos</h2>
+  <input id="busqueda"
+         placeholder="Nombre o código de barras">
+  <button type="button" onclick="buscarProducto()">
+    Buscar producto
+  </button>
+  <div id="resultadoBusqueda"></div>
+</section>
+
+<section style="margin-top:25px">
+  <h2>Escanear código de barras</h2>
+  <button type="button" onclick="iniciarCamara()">
+    Abrir cámara
+  </button>
+  <div id="lector" style="width:100%;margin-top:15px"></div>
+</section>
+
+  </main>
+
+  
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <script>
+  const supabaseUrl = "https://iyrqarpotyckzozhnswx.supabase.co";
+  const supabaseKey = "sb_publishable_HGEpi6b5IGWMo9zsNkBXLA_zn6HtSN3";
+
+  const db = window.supabase.createClient(
+    supabaseUrl,
+    supabaseKey
+  );
+
+  document.getElementById("login")
+    .addEventListener("submit", async function(event) {
+      event.preventDefault();
+
+      const correo = document.getElementById("correo").value;
+      const clave = document.getElementById("clave").value;
+      const mensaje = document.getElementById("mensaje");
+
+      mensaje.textContent = "ingresando...";
+
+const { data, error } = await db.auth.signInWithPassword({
+  email: correo,
+  password: clave
+});
+
+if (error) {
+  mensaje.textContent = "Error: " + error.message;
+  return;
+}
+
+      const { data: perfil, error: errorPerfil } = await db
+        .from("perfiles")
+        .select("nivel")
+        .eq("usuario_id", data.user.id)
+        .single();
+
+      if (errorPerfil || !perfil) {
+        mensaje.textContent = "No se pudo verificar tu nivel de acceso.";
+        await db.auth.signOut();
+        return;
+      }
+
+      mensaje.textContent =
+        "¡Bienvenido a La Barraca Stock! Nivel de acceso: " +
+        perfil.nivel;
+      document.getElementById("login").style.display = "none";
+mensaje.innerHTML = `
+  <h2>Panel principal</h2>
+  <p>Bienvenido al sistema de La Barraca</p>
+  <p>Tu nivel de acceso: ${perfil.nivel}</p>  
+  <h3>Cargar producto</h3>
+
+<input id="codigoProducto" placeholder="Código de barras">
+
+<button type="button" onclick="escanearParaCargar()">
+  📷 Escanear para cargar
+</button>
+
+<input id="nombreProducto" placeholder="Nombre del producto">
+<input id="precioProducto" type="number" placeholder="Precio de venta">
+<input id="stockProducto" type="number" placeholder="Cantidad disponible">
+<input id="ubicacionProducto" placeholder="Ubicación (opcional)">
+<label for="fotoProducto">Foto del producto (opcional)</label>
+<input id="fotoProducto" type="file" accept="image/*" style="font-size:14px">
+<img id="vistaFotoProducto" alt="Vista previa de la foto" style="display:none;width:100%;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px">
+
+<button type="button" onclick="guardarProducto()">
+  Guardar producto
+</button>
+
+<p id="resultadoProducto"></p>
+`;
+    });
+  
+window.guardarProducto = async function() {
+  const codigo_barras = document.getElementById("codigoProducto").value.trim();
+  const nombre = document.getElementById("nombreProducto").value.trim();
+  const precio_venta = Number(document.getElementById("precioProducto").value);
+  const stock = Number(document.getElementById("stockProducto").value);
+  const ubicacion = document.getElementById("ubicacionProducto").value.trim();
+  const resultado = document.getElementById("resultadoProducto");
+  const foto = document.getElementById("fotoProducto").files[0];
+
+  if (!codigo_barras || !nombre || !precio_venta ||
+      !Number.isInteger(stock) || stock < 0) {
+    resultado.textContent = "Completá correctamente los datos.";
+    return;
+  }
+
+  resultado.textContent = "Guardando producto...";
+
+  let foto_path = null;
+  if (foto) {
+    if (!foto.type.startsWith("image/")) {
+      resultado.textContent = "Elegí un archivo de imagen.";
+      return;
+    }
+    try {
+      const imagenReducida = await prepararFoto(foto);
+      const ruta = `${crypto.randomUUID()}.jpg`;
+      const { error: errorFoto } = await db.storage
+        .from("productos-fotos.")
+        .upload(ruta, imagenReducida, { contentType: "image/jpeg", upsert: false });
+      if (errorFoto) throw errorFoto;
+      foto_path = ruta;
+    } catch (errorFoto) {
+      resultado.textContent = "No se pudo subir la foto: " + errorFoto.message;
+      return;
+    }
+  }
+
+  const { error } = await db.from("productos").insert({
+    codigo_barras,
+    nombre,
+    precio_venta,
+    stock,
+    ubicacion,
+    foto_path
+  });
+
+  if (error) {
+    if (foto_path) await db.storage.from("productos-fotos.").remove([foto_path]);
+    resultado.textContent = "Error: " + error.message;
+  } else {
+    resultado.textContent = "¡Producto guardado correctamente!";
+    document.getElementById("fotoProducto").value = "";
+    document.getElementById("vistaFotoProducto").style.display = "none";
+  }
+}
+
+async function prepararFoto(archivo) {
+  const url = URL.createObjectURL(archivo);
+  try {
+    const imagen = new Image();
+    imagen.src = url;
+    await imagen.decode();
+    const escala = Math.min(1, 1200 / Math.max(imagen.width, imagen.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(imagen.width * escala);
+    canvas.height = Math.round(imagen.height * escala);
+    canvas.getContext("2d").drawImage(imagen, 0, 0, canvas.width, canvas.height);
+    return await new Promise((resolve, reject) =>
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("No se pudo procesar la imagen")), "image/jpeg", 0.8)
+    );
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+document.addEventListener("change", event => {
+  if (event.target.id !== "fotoProducto") return;
+  const vista = document.getElementById("vistaFotoProducto");
+  const archivo = event.target.files[0];
+  if (!archivo) { vista.style.display = "none"; return; }
+  const url = URL.createObjectURL(archivo);
+  vista.onload = () => URL.revokeObjectURL(url);
+  vista.onerror = () => URL.revokeObjectURL(url);
+  vista.src = url;
+  vista.style.display = "block";
+});
+
+async function buscarProducto() {
+  const busqueda = document.getElementById("busqueda").value.trim();
+  const resultado = document.getElementById("resultadoBusqueda");
+
+  if (!busqueda) {
+    resultado.textContent = "Ingresá un nombre o código.";
+    return;
+  }
+
+  resultado.textContent = "Buscando...";
+
+  const { data, error } = await db
+    .from("productos")
+    .select("nombre,codigo_barras,precio_venta,stock,ubicacion,foto_path")
+    .or(`nombre.ilike.%${busqueda.replace(/[%_,().]/g, "")}%,codigo_barras.ilike.%${busqueda.replace(/[%_,().]/g, "")}%`)
+    .limit(20);
+
+  if (error) {
+    resultado.textContent = "Error: " + error.message;
+    return;
+  }
+
+  resultado.replaceChildren();
+
+  if (!data.length) {
+    resultado.textContent = "No se encontraron productos.";
+    return;
+  }
+
+  data.forEach(p => {
+    const item = document.createElement("p");
+    item.textContent =
+      `${p.nombre} | Código: ${p.codigo_barras} | Precio: $${p.precio_venta} | Stock: ${p.stock} | Ubicación: ${p.ubicacion || "-"}`;
+    resultado.appendChild(item);
+    if (p.foto_path) {
+      const img = document.createElement("img");
+      img.alt = "Foto de " + p.nombre;
+      img.style.cssText = "width:100%;max-width:220px;max-height:220px;object-fit:contain;border-radius:10px;margin-bottom:12px";
+      resultado.appendChild(img);
+      db.storage.from("productos-fotos.").createSignedUrl(p.foto_path, 3600)
+        .then(({ data: fotoData, error: fotoError }) => {
+          if (!fotoError && fotoData?.signedUrl) img.src = fotoData.signedUrl;
+          else img.alt = "Foto no disponible";
+        });
+    }
+  });
+}
+
+  
+let lectorCamara = null;
+let camaraActiva = false;
+
+async function iniciarCamara() {
+  if (camaraActiva) return;
+
+  if (typeof Html5Qrcode === "undefined") {
+    alert("No se pudo cargar el lector de códigos.");
+    return;
+  }
+
+  lectorCamara = new Html5Qrcode("lector");
+
+  try {
+    camaraActiva = true;
+
+    await lectorCamara.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 150 }
+      },
+      async (codigo) => {
+        await lectorCamara.stop();
+        camaraActiva = false;
+
+document.getElementById("busqueda").value = codigo;
+document.getElementById("codigoProducto").value = codigo;
+await buscarProducto();
+
+      },
+      () => {}
+    );
+  } catch (error) {
+    camaraActiva = false;
+    alert("No se pudo abrir la cámara: " + error.message);
+  }
+}
+
+function escanearParaCargar() {
+  const codigo = document.getElementById("busqueda").value.trim();
+
+  if (codigo) {
+    document.getElementById("codigoProducto").value = codigo;
+  }
+
+  document.getElementById("lector").scrollIntoView({
+    behavior: "smooth"
+  });
+
+  alert("Escaneá el producto con la cámara y después tocá nuevamente 'Escanear para cargar' para copiar el código.");
+  iniciarCamara();
+}
+
+
+</script>
+</body>
+</html>
+
