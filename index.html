@@ -196,14 +196,11 @@ window.guardarProducto = async function() {
       return;
     }
     try {
-      // Subir el archivo original evita fallos de FileReader en Android.
-      // La vista previa ya confirma que el teléfono puede acceder a la imagen.
-      if (foto.size > 6 * 1024 * 1024) throw new Error("La foto supera 6 MB. Elegí una imagen más liviana.");
-      const extension = foto.type === "image/png" ? "png" : foto.type === "image/webp" ? "webp" : "jpg";
-      const ruta = `${crypto.randomUUID()}.${extension}`;
+      const imagenReducida = await prepararFoto(foto);
+      const ruta = `${crypto.randomUUID()}.jpg`;
       const { error: errorFoto } = await db.storage
         .from("productos-fotos.")
-        .upload(ruta, foto, { contentType: foto.type || "image/jpeg", upsert: false });
+        .upload(ruta, imagenReducida, { contentType: "image/jpeg", upsert: false });
       if (errorFoto) throw errorFoto;
       foto_path = ruta;
     } catch (errorFoto) {
@@ -385,5 +382,4 @@ function escanearParaCargar() {
 
 </script>
 </body>
-</html>
-
+  </html>
