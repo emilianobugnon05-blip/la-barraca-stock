@@ -81,7 +81,14 @@ letter-spacing: 1px; }
          placeholder="Nombre o código de barras">
   <button type="button" onclick="buscarProducto()">
     Buscar producto
-  </button>
+  </button>  
+<button type="button" onclick="publicarProductoBuscado()">
+  🛒 Publicar en Shop
+</button>
+<button type="button" onclick="quitarProductoBuscado()">
+  ❌ Quitar de Shop
+</button>
+
   <div id="resultadoBusqueda"></div>
 </section>
 
@@ -491,6 +498,74 @@ function escanearParaCargar() {
   iniciarCamara();
 }
 
+
+async function publicarEnShop(codigo, publicar) {
+  const { data: usuario } = await db.auth.getUser();
+
+  if (!usuario?.user) {
+    alert("Primero iniciá sesión.");
+    return;
+  }
+
+  const { data: perfil } = await db
+    .from("perfiles")
+    .select("nivel")
+    .eq("usuario_id", usuario.user.id)
+    .single();
+
+  if (Number(perfil?.nivel) !== 1) {
+    alert("Solo el administrador puede publicar.");
+    return;
+  }
+
+  const { error } = await db
+    .from("productos")
+    .update({ publicar_shop: publicar })
+    .eq("codigo_barras", codigo);
+
+  if (error) {
+    alert("Error: " + error.message);
+  } else {
+    alert(publicar
+      ? "Producto publicado en Shop"
+      : "Producto retirado de Shop");
+  }
+}
+
+async function publicarProductoBuscado() {
+  await cambiarPublicacionBuscada(true);
+}
+
+async function quitarProductoBuscado() {
+  await cambiarPublicacionBuscada(false);
+}
+
+async function cambiarPublicacionBuscada(publicar) {
+  const codigo = document.getElementById("busqueda").value.trim();
+
+  if (!codigo) {
+    alert("Primero ingresá el código de barras del producto.");
+    return;
+  }
+
+  const { data, error } = await db
+    .from("productos")
+    .select("codigo_barras,nombre")
+    .eq("codigo_barras", codigo)
+    .limit(2);
+
+  if (error || !data || data.length !== 1) {
+    alert("No se encontró un producto único con ese código.");
+    return;
+  }
+
+  if (!confirm(
+    (publicar ? "¿Publicar " : "¿Quitar de Shop ") +
+    data[0].nombre + "?"
+  )) return;
+
+  await publicarEnShop(codigo, publicar);
+}
 
 </script>
 </body>
