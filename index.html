@@ -178,6 +178,14 @@ mensaje.innerHTML = `
 <input id="ubicacionProducto" placeholder="Ubicación (opcional)">
 <label for="fotoProducto">Foto del producto (opcional)</label>
 <input id="fotoProducto" type="file" accept="image/*" style="font-size:14px">
+<label for="categoriaProducto">Categoría del producto</label>
+<select id="categoriaProducto" required style="width:100%;padding:14px;margin-top:8px;background:#101014;color:white;border:1px solid #52525b;border-radius:10px;font-size:16px">
+  <option value="">Seleccionar categoría</option>
+  <option value="Repostería">Repostería</option>
+  <option value="Cotillón">Cotillón</option>
+  <option value="Juguetería">Juguetería</option>
+  <option value="Descartables">Descartables</option>
+</select>
 <img id="vistaFotoProducto" alt="Vista previa de la foto" style="display:none;width:100%;max-height:240px;object-fit:contain;margin-top:10px;border-radius:10px">
 
 <button type="button" onclick="guardarProducto()">
@@ -275,13 +283,15 @@ window.guardarProducto = async function() {
   const precio_venta = Number(document.getElementById("precioProducto").value);
   const stock = Number(document.getElementById("stockProducto").value);
   const ubicacion = document.getElementById("ubicacionProducto").value.trim();
+  const categoria = document.getElementById("categoriaProducto").value;
   const resultado = document.getElementById("resultadoProducto");
   const foto = document.getElementById("fotoProducto").files[0];
 
   if (!codigo_barras || !nombre || !precio_venta ||
-      !Number.isInteger(stock) || stock < 0) {
+      !Number.isInteger(stock) || stock < 0 || !categoria) {
     resultado.textContent = "Completá correctamente los datos.";
     return;
+    
   }
 
   guardandoProducto = true;
@@ -332,7 +342,8 @@ window.guardarProducto = async function() {
     precio_venta,
     stock,
     ubicacion,
-    foto_path
+    foto_path,
+categoria
   });
 
   if (error) {
