@@ -89,6 +89,10 @@ letter-spacing: 1px; }
   ❌ Quitar de Shop
 </button>
 
+<button type="button" onclick="editarPromocionProducto()">
+  🔥 Configurar oferta
+</button>
+
   <div id="resultadoBusqueda"></div>
 </section>
 
@@ -595,6 +599,92 @@ async function cambiarPublicacionBuscada(publicar) {
   )) return;
 
   await publicarEnShop(codigo, publicar);
+}
+
+async function editarPromocionProducto() {
+  const codigo = document.getElementById("busqueda").value.trim();
+
+  if (!codigo) {
+    alert("Ingresá el código de barras del producto.");
+    return;
+  }
+
+  const { data: usuario } = await db.auth.getUser();
+  if (!usuario?.user) {
+    alert("Primero iniciá sesión.");
+    return;
+  }
+
+  const { data: perfil, error: errorPerfil } = await db
+    .from("perfiles")
+    .select("nivel")
+    .eq("usuario_id", usuario.user.id)
+    .single();
+
+  if (errorPerfil || Number(perfil?.nivel) !== 1) {
+    alert("Solo el administrador puede configurar ofertas.");
+    return;
+  }
+
+  const { data: productos, error } = await db
+    .from("productos")
+    .select("id,nombre,precio_venta,precio_promocion,en_promocion")
+    .eq("codigo_barras", codigo)
+    .limit(2);
+
+  if (error || !productos || productos.length !== 1) {
+    alert("No se encontró un producto único con ese código.");
+    return;
+  }
+
+  const producto = productos[0];
+
+  const respuesta = prompt(
+    "Precio normal: $" + producto.precio_venta +
+    "\nIngresá el precio de oferta." +
+    "\nEscribí 0 para quitar la promoción.",
+    producto.en_promocion ? producto.precio_promocion : ""
+  );
+
+  if (respuesta === null) return;
+
+  const texto = respuesta.trim();
+  if (!texto) {
+    alert("Ingresá un precio o escribí 0 para quitar la oferta.");
+    return;
+  }
+
+  const precio = Number(texto);
+  if (!Number.isFinite(precio) || precio < 0 ||
+      (precio > 0 && precio >= Number(producto.precio_venta))) {
+    alert("El precio de oferta debe ser mayor que cero y menor al precio normal.");
+    return;
+  }
+
+  const activar = precio > 0;
+
+  const { data: actualizado, error: errorGuardar } = await db
+    .from("productos")
+    .update({
+      en_promocion: activar,
+      precio_promocion: activar ? precio : null
+    })
+    .eq("id", producto.id)
+    .select("id");
+
+  if (errorGuardar) {
+    alert("No se pudo guardar: " + errorGuardar.message);
+    return;
+  }
+
+  if (!actualizado || actualizado.length !== 1) {
+    alert("No se modificó el producto. Revisaremos los permisos.");
+    return;
+  }
+
+  alert(activar
+    ? "¡Oferta guardada! Actualizá La Barraca Shop."
+    : "Promoción desactivada correctamente.");
 }
 
 </script>
