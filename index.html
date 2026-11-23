@@ -167,6 +167,12 @@ mensaje.innerHTML = `
 
 <input id="nombreProducto" placeholder="Nombre del producto">
 <input id="precioProducto" type="number" placeholder="Precio de venta">
+<label for="precioPromocion">Precio de oferta (opcional)</label>
+<input id="precioPromocion" type="number" min="0" step="0.01" placeholder="Ejemplo: 2200">
+<label>
+  <input id="enPromocion" type="checkbox" style="width:auto">
+  Activar promoción
+</label>
 <input id="stockProducto" type="number" min="0" step="1" placeholder="Cantidad inicial (producto nuevo)">
 <div id="sectorIngreso" style="display:none;border:1px solid #52525b;border-radius:12px;padding:12px;margin-top:14px">
   <strong>Ingreso de mercadería existente</strong>
@@ -281,6 +287,10 @@ window.guardarProducto = async function() {
   const codigo_barras = document.getElementById("codigoProducto").value.trim();
   const nombre = document.getElementById("nombreProducto").value.trim();
   const precio_venta = Number(document.getElementById("precioProducto").value);
+  const en_promocion = document.getElementById("enPromocion").checked;
+const precio_promocion = en_promocion
+  ? Number(document.getElementById("precioPromocion").value)
+  : null;
   const stock = Number(document.getElementById("stockProducto").value);
   const ubicacion = document.getElementById("ubicacionProducto").value.trim();
   const categoria = document.getElementById("categoriaProducto").value;
@@ -293,7 +303,15 @@ window.guardarProducto = async function() {
     return;
     
   }
-
+if (en_promocion && (
+  !Number.isFinite(precio_promocion) ||
+  precio_promocion <= 0 ||
+  precio_promocion >= precio_venta
+)) {
+  resultado.textContent =
+    "El precio de oferta debe ser mayor que cero y menor que el precio normal.";
+  return;
+}
   guardandoProducto = true;
   resultado.textContent = "Verificando código...";
   const {data: existentes, error: errorVerificacion} = await db.from("productos")
@@ -343,9 +361,10 @@ window.guardarProducto = async function() {
     stock,
     ubicacion,
     foto_path,
-categoria
-  });
-
+categoria,
+en_promocion,
+precio_promocion
+});
   if (error) {
     if (foto_path) await db.storage.from("productos-fotos.").remove([foto_path]);
     resultado.textContent = "Error: " + error.message;
