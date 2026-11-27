@@ -92,7 +92,9 @@ letter-spacing: 1px; }
 <button type="button" onclick="editarPromocionProducto()">
   🔥 Configurar oferta
 </button>
-
+<button type="button" onclick="editarProductoBuscado()">
+  ✏️ Editar producto
+</button>
   <div id="resultadoBusqueda"></div>
 </section>
 
@@ -686,6 +688,144 @@ async function editarPromocionProducto() {
   alert(activar
     ? "¡Oferta guardada! Actualizá La Barraca Shop."
     : "Promoción desactivada correctamente.");
+}
+
+let editandoProducto = false;
+
+async function editarProductoBuscado() {
+  if (editandoProducto) return;
+
+  const codigo = document.getElementById("busqueda").value.trim();
+
+  if (!codigo) {
+    alert("Ingresá el código de barras del producto que querés editar.");
+    return;
+  }
+
+  editandoProducto = true;
+
+  try {
+    const { data: sesion, error: errorSesion } = await db.auth.getUser();
+
+    if (errorSesion || !sesion?.user) {
+      alert("Primero iniciá sesión.");
+      return;
+    }
+
+    const { data: perfil, error: errorPerfil } = await db
+      .from("perfiles")
+      .select("nivel")
+      .eq("usuario_id", sesion.user.id)
+      .single();
+
+    if (errorPerfil || Number(perfil?.nivel) !== 1) {
+      alert("Solo el administrador puede editar productos.");
+      return;
+    }
+
+    const { data: productos, error } = await db
+      .from("productos")
+      .select("id,nombre,precio_venta,stock,precio_promocion,en_promocion")
+      .eq("codigo_barras", codigo)
+      .limit(2);
+
+    if (error) throw error;
+
+    if (!productos || productos.length !== 1) {
+      alert("No se encontró un producto único con ese código.");
+      return;
+    }
+
+    const producto = productos[0];
+
+    const nuevoNombre = prompt(
+      "Nombre del producto:",
+      producto.nombre
+    );
+    if (nuevoNombre === null) return;
+
+    const nombre = nuevoNombre.trim();
+    if (!nombre) {
+      alert("El nombre no puede quedar vacío.");
+      return;
+    }
+
+    const respuestaPrecio = prompt(
+      "Precio normal de venta:",
+      producto.precio_venta
+    );
+    if (respuestaPrecio === null) return;
+
+    const textoPrecio = respuestaPrecio.trim();
+    const precio = Number(textoPrecio);
+
+    if (!textoPrecio || !Number.isFinite(precio) || precio <= 0) {
+      alert("Ingresá un precio válido mayor que cero.");
+      return;
+    }
+
+    const respuestaStock = prompt(
+      "Stock TOTAL disponible (no unidades a sumar):",
+      producto.stock
+    );
+    if (respuestaStock === null) return;
+
+    const textoStock = respuestaStock.trim();
+    const stock = Number(textoStock);
+
+    if (!textoStock || !Number.isSafeInteger(stock) || stock < 0) {
+      alert("El stock debe ser un número entero igual o mayor que cero.");
+      return;
+    }
+
+    let precioPromocion = producto.precio_promocion;
+    let enPromocion = producto.en_promocion === true;
+
+    if (enPromocion && Number(precioPromocion) >= precio) {
+      alert(
+        "El nuevo precio normal no puede ser igual o menor que la oferta activa. " +
+        "Primero modificá la oferta con el botón Configurar oferta."
+      );
+      return;
+    }
+
+    if (!confirm(
+      "¿Guardar estos cambios?\n\n" +
+      "Producto: " + nombre +
+      "\nPrecio: $" + precio +
+      "\nStock total: " + stock
+    )) return;
+
+    const { data: actualizado, error: errorGuardar } = await db
+      .from("productos")
+      .update({
+        nombre: nombre,
+        precio_venta: precio,
+        stock: stock
+      })
+      .eq("id", producto.id)
+      .eq("stock", producto.stock)
+      .select("id");
+
+    if (errorGuardar) throw errorGuardar;
+
+    if (!actualizado || actualizado.length !== 1) {
+      alert(
+        "No se guardaron los cambios. Es posible que el stock haya cambiado. " +
+        "Buscá nuevamente el producto."
+      );
+      return;
+    }
+
+    alert("¡Producto actualizado correctamente!");
+
+    await buscarProducto();
+
+  } catch (error) {
+    alert("No se pudo editar el producto: " + error.message);
+  } finally {
+    editandoProducto = false;
+  }
 }
 
 </script>
